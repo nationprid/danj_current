@@ -1,0 +1,245 @@
+;(function($){
+	$('body')
+	.on('WMInitialize',function(evt){
+		if($('input[name=mail]').val()){
+			$('input[name=password]').focus();
+		}
+		else{
+			$('input[name=mail]').focus();
+		}		
+	})
+	.on('click','.login-language-change',function(evt){
+		evt.preventDefault();
+		var lang = $(this).linkval();
+		$.setCookie('webmailLoginLang',lang,new Date( ( new Date ).getTime() + 60*60*24*30 ));
+		location.reload();
+	})
+	.on('click','.switch-login-type li',function(evt){
+		evt.preventDefault();
+		var selected = $(this).find('a').attr('href');
+		var tabs = $('.switch-login-type li');
+		tabs.each(function(){
+			var tabName = $(this).find('a').attr('href');
+			if(tabName == selected){
+				$(this).addClass('selected');
+				$(tabName).show().find('form')[0].reset();
+			}
+			else{
+				$(this).removeClass('selected');
+				$(tabName).hide().find('form')[0].reset();
+			}
+		});
+	})
+	.on('submit','form',function(evt){
+		var ipt = $(this).find('input[name=mail]');
+		var emailId = ipt.val();
+		if(!emailId){
+			evt.preventDefault();
+			ipt[0].focus();
+			return alert($.lang('common_no_id_input'));
+		}
+		ipt = $(this).find('input[name=password]');
+		if(!ipt.val()){
+			evt.preventDefault();
+			ipt[0].focus();
+			return alert($.lang('common_no_passwd_input'));
+		}
+		if($(this).find('input[name=save]')[0].checked){
+			var isUser = ($(this).find('input[name=loginType]').val() == 'user') ? true : false;
+			var expire = new Date;
+			expire.setFullYear(expire.getFullYear() + 10);
+			$.setCookie(isUser ? 'webmailEmailId' : 'webmailAdminId',emailId,expire);
+		}
+		else{
+			var isUser = ($(this).find('input[name=loginType]').val() == 'user') ? true : false;
+			$.setCookie(isUser ? 'webmailEmailId' : 'webmailAdminId','',new Date);
+		}
+		var token = Math.random().toString(36).substr(2);
+		if($(this).find('input[name=enctoken]').size() > 0){
+			$(this).find('input[name=enctoken]').val(token)
+		}
+		else{
+			$(this).append($('<input name="enctoken" type="hidden"/>').val(token));
+		}
+		var q = $.getQuery();
+		if(q && q.uri){
+			$(this).append($('<input name="redirect" type="hidden"/>').val(decodeURIComponent(q.uri)));
+		}
+		$('iframe#HFLOGIN').load(function(evt){
+			$(this).off('load');
+			$.getJSON('/login.php?enctoken='+token,function(result){
+				if(!result) return;
+				try{
+					if(result.code){
+						switch(parseInt(result.code)){
+							case 2002: document.location.href='/intro.php'; return alert($.lang('common_login_fail')); break;
+							case 2003: return alert($.lang('new_login_fail_ip_over')); break;
+							case 2004: return alert($.lang('new_login_geoip_fail')); break;
+							case 2005: return alert($.lang('new_login_now_check')); break;
+							case 2006: return alert($.lang('common_service_end')); break;
+							case 2007: return alert($.lang('common_user_service_stop')); break;
+							case 2008: document.location.href='/intro.php'; return alert($.lang('new_login_fail_ip_over_six')); break;
+                            case 3000: document.location.replace("/intro.php?i="+result.message);return;break;
+							default:
+								return alert('Error:'+result.code);
+						}
+						return alert(result.message);
+					}
+					if(window.top != window.self){
+						if(result.redirect) document.location.replace(result.redirect);
+					}
+					else{
+						var p = (result.rTarget ? window[result.rTarget] : window);
+						if(result.redirect) p.document.location.replace(result.redirect);
+					}
+				}
+				catch(e){
+					alert('Error:'+e);
+					location.reload();
+				}
+			});
+		});
+	})
+	.on('change','input[name=ip]',function(evt){
+		var disp = $(this).closest('li').find('span');
+		if(this.checked){
+			disp.removeClass('disabled').html('on');
+		}
+		else{
+			disp.addClass('disabled').html('off');
+		}
+	})
+	//인증번호 받기
+	.on('click','.btnRecieve',function(evt) {
+        evt.preventDefault();
+
+        if($(".checkbox-email:checked").val() == undefined && $(".checkbox-sms:checked").val() == undefined ) {
+            return alert($.lang('not_check_type'));
+		}
+        var data = {};
+
+        var type;
+        if($(".checkbox-email:checked").val() == 'email'){
+        	type = "email";
+		}else if($(".checkbox-sms:checked").val() == 'sms'){
+            type = "sms";
+        }
+        data['type'] = type;
+		data['admin_id'] = $('#adminId').val();
+        data['email_id'] = $('#emailId').val();
+        data['reseller_id'] = $('#isReseller').val();
+        try{
+            $.req('/user/auth/send.php',data,function(result){
+                if(!result) return alert($.lang('common_sendfailed'));
+                switch(result.result){
+                    case 'SUCCESS':
+                        if($('#isReseller').val() == 'hosting') {
+                            alert($.lang('send_success_hosting'));
+                        }else{
+                            alert($.lang('send_success_reseller'));
+						}
+						$('.btnRecieve').css('cursor', 'default');
+                        $('.btnRecieve').attr('disabled',true);
+                        return;
+                        break;
+                    case 'FAIL':
+                        switch(parseInt(result.code)){
+							case 4003: // 발송건수가 부족합니다.
+                                return alert($.lang('sms_error_count'));
+                                break;
+                            case 5003: // 대표번호 설정이 안되었다
+                                return alert($.lang('sms_error_no_agent'));
+                                break;
+                            default:
+                                return alert($.lang('sms_send_fail')+':'+result.code);
+                                break;
+                        }
+                    default:
+                        return alert($.lang('sms_send_fail'));
+                        break;
+                }
+            });
+        }
+        catch(e){
+            return alert($.lang(e));
+        }
+        $(".auth-check-form").show();
+        $(".auth-check-time").show();
+        $('body').trigger('calcLimit');
+	})
+    //인증번호 확인
+	.on('click','.btnConfirm',function(evt) {
+        evt.preventDefault();
+        var type;
+        var number;
+        var key;
+        if($(".checkbox-email:checked").val() == 'email'){
+            type = "email";
+            number = $('.auth-email-address').text();
+        }else if($(".checkbox-sms:checked").val() == 'sms'){
+            type = "sms";
+            number = $('.auth-sms-no').text();
+        }
+        key = $('.auth-no').val();
+
+        $.req('/user/auth/check.php',{'number':number,'type':type,'key':key,'email_id':$('#emailId').val(),'admin_id' : $('#adminId').val()},function(result,errno){
+        	/*
+            if(errno == 3002)
+            	return alert($.lang(type == 'sms'||type == 'email' ? 'notice_time_limit' : 'notice_time_limit_ars'))
+            	*/
+            if(result.code=='0000'){
+                $(".user-login-btn").attr('disabled',false);
+                $('.user-login-btn').click();
+            }else if(result.code=='9001'){
+                return alert($.lang('auth_time_error'));
+            }else if(result.code=='9100'){
+                alert($.lang('new_login_fail_ip_over'));
+            }else if(result.code=='9200'){
+                alert($.lang('new_login_geoip_fail'));
+            }else{
+                return alert($.lang('error_wrong_authkey'));
+            }
+        });
+
+
+	})
+		//인증취소 버튼
+	.on('click','.btnCancel',function(evt) {
+        var type;
+        var number;
+        var key;
+        if($(".checkbox-email:checked").val() == 'email'){
+            type = "email";
+            number = $('.auth-email-address').text();
+        }else if($(".checkbox-sms:checked").val() == 'sms'){
+            type = "sms";
+            number = $('.auth-sms-no').text();
+        }
+        $.req('/user/auth/cancel.php',{'number':number,'type':type,'key':key,'email_id':$('#emailId').val(),'admin_id' : $('#adminId').val()},function(result,errno){
+			if(result.code == '0000'){
+				document.location.reload('/intro.php');
+			}
+        });
+
+	})
+	// 시간제한 180초
+	.on('calcLimit',function(evt){
+
+        var timer=180;
+        var seconds;
+        var interval = setInterval(function(){
+            seconds = parseInt(timer % 181, 10);
+            $('#time-sec').text(seconds);
+
+            if (--timer < 0) {
+                timer = 180;
+                clearInterval(interval);
+                $('.btnRecieve').css('cursor', 'pointer');
+                $('.btnRecieve').attr('disabled',false);
+            }
+        }, 1000);
+	})
+
+	;
+})(jQuery);
+
